@@ -20,7 +20,6 @@ def r2_adjusted(r2, n, m):
     r2_adj = 1 - (1 - r2) * ((n - 1) / (n - (m + 1)))
     return r2_adj
 
-# (In src/analysis.py)
 
 def calculate_aic_weights(results_df):
     """
@@ -133,5 +132,56 @@ def calculate_heritability(results_df, trait_cols, trait_labels):
         })
 
     # Create and return the summary DataFrame
+    summary_df = pd.DataFrame(table_rows)
+    return summary_df
+
+
+def calculate_heritability_arithmetic(results_df, trait_cols, trait_labels):
+    """
+    Calculates broad-sense heritability (H²) using the ARITHMETIC mean for n_r.
+    This method is suitable for BALANCED experimental designs.
+    """
+    table_rows = []
+    grouped_by_genotype = results_df.groupby('Plant Genotype')
+
+    for trait in trait_cols:
+        anova_data = [group[trait].dropna() for name, group in grouped_by_genotype]
+        anova_data = [group for group in anova_data if not group.empty]
+        if len(anova_data) < 2: continue
+
+        k = len(anova_data)
+        n_total = sum(len(group) for group in anova_data)
+        grand_mean = results_df[trait].dropna().mean()
+        
+        ss_genotype = sum(len(group) * (group.mean() - grand_mean)**2 for group in anova_data)
+        df_genotype = k - 1
+        ms_genotype = ss_genotype / df_genotype if df_genotype > 0 else 0
+        
+        ss_error = sum(sum((x - group.mean())**2 for x in group) for group in anova_data)
+        df_error = n_total - k
+        ms_error = ss_error / df_error if df_error > 0 else 0
+        
+        # Calculate n_r using the simple arithmetic mean.
+        n_r = np.mean([len(group) for group in anova_data])
+        
+        var_G = (ms_genotype - ms_error) / n_r if n_r != 0 else 0
+        var_E = ms_error
+        var_P = var_G + var_E
+        
+        var_G = max(0, var_G)
+        var_P = max(0, var_P)
+        H2 = var_G / var_P if var_P > 0 else 0
+        
+        table_rows.append({
+            'Trait': trait_labels.get(trait, trait),
+            'MS Genotype': round(ms_genotype, 4),
+            'MS Error': round(ms_error, 4),
+            'n_r': round(n_r, 2),
+            'Var(G)': round(var_G, 4),
+            'Var(E)': round(var_E, 4),
+            'Var(P)': round(var_P, 4),
+            'H²': round(H2, 3)
+        })
+
     summary_df = pd.DataFrame(table_rows)
     return summary_df
