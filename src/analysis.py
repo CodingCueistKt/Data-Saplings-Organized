@@ -20,10 +20,6 @@ def r2_adjusted(r2, n, m):
     r2_adj = 1 - (1 - r2) * ((n - 1) / (n - (m + 1)))
     return r2_adj
 
-<<<<<<< HEAD
-=======
-# (In src/analysis.py)
->>>>>>> d6a2ae577d4bcc016f119d285bba0d11f15d4470
 
 def calculate_aic_weights(results_df):
     """
@@ -137,7 +133,6 @@ def calculate_heritability(results_df, trait_cols, trait_labels):
 
     # Create and return the summary DataFrame
     summary_df = pd.DataFrame(table_rows)
-<<<<<<< HEAD
     return summary_df
 
 
@@ -189,6 +184,4 @@ def calculate_heritability_arithmetic(results_df, trait_cols, trait_labels):
         })
 
     summary_df = pd.DataFrame(table_rows)
-=======
->>>>>>> d6a2ae577d4bcc016f119d285bba0d11f15d4470
     return summary_df
