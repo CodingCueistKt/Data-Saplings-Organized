@@ -127,3 +127,16 @@ def apply_scaling(df, scaler_name="MinMaxScaler", exclude_cols=None):
     scaled_df[columns_to_scale] = scaled_data
     
     return scaled_df, columns_to_scale, scaler_obj
+
+def calculate_deltas(df):
+    """
+    Calculates the change in metrics between consecutive rounds for each plant.
+    """
+    df_sorted = df.sort_values(by=['Plant Info', 'Days_Since_2024_05_26'])
+    
+    # Calculate the difference from the previous row within each plant group
+    delta_cols = ['area', 'height', 'blue_yellow_mean', 'green_red_mean']
+    for col in delta_cols:
+        df_sorted[f'delta_{col}'] = df_sorted.groupby('Plant Info')[col].diff()
+        
+    return df_sorted.dropna(subset=[f'delta_{col}' for col in delta_cols])

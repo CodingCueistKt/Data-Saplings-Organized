@@ -121,3 +121,38 @@ def plot_global_models(daily_means_df, global_params):
     plt.title('Global Growth Models - Daily Mean Area')
     plt.legend(loc='best')
     plt.show()
+
+def plot_model_performance_curves(model_results_list):
+    """
+    Plots ROC and Precision-Recall curves for a list of model results.
+    """
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 8))
+    
+    colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+    
+    # ROC Curve Plot
+    for i, results in enumerate(model_results_list):
+        ax1.plot(results['fpr'], results['tpr'], color=colors[i], lw=2,
+                 label=f'{results["feature_names"][0]} (AUC = {results["roc_auc"]:.2f})')
+    ax1.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    ax1.set_xlim([0.0, 1.0])
+    ax1.set_ylim([0.0, 1.05])
+    ax1.set_xlabel('False Positive Rate')
+    ax1.set_ylabel('True Positive Rate')
+    ax1.set_title('Receiver Operating Characteristic (ROC) Curve')
+    ax1.legend(loc="lower right")
+    ax1.grid(True)
+    
+    # Precision-Recall Curve Plot
+    for i, results in enumerate(model_results_list):
+        ax2.plot(results['recall'], results['precision'], color=colors[i], lw=2,
+                 label=f'{results["feature_names"][0]} (AUC = {results["pr_auc"]:.2f})')
+    ax2.set_xlabel('Recall')
+    ax2.set_ylabel('Precision')
+    ax2.set_title('Precision-Recall Curve')
+    ax2.legend(loc="lower left")
+    ax2.grid(True)
+    
+    plt.suptitle('Predicting High Vigor from Color Metrics', fontsize=20)
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    plt.show()

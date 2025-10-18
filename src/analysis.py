@@ -185,3 +185,39 @@ def calculate_heritability_arithmetic(results_df, trait_cols, trait_labels):
 
     summary_df = pd.DataFrame(table_rows)
     return summary_df
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import roc_curve, precision_recall_curve, auc
+
+def train_and_evaluate_vigor_model(df_deltas, feature_cols, target_col='high_growth_vigor'):
+    """
+    Trains a Random Forest model to predict vigor and returns metrics for plotting.
+    """
+    # Define high growth vigor (e.g., top 30% of area growth)
+    vigor_threshold = df_deltas['delta_area'].quantile(0.70)
+    df_deltas[target_col] = (df_deltas['delta_area'] >= vigor_threshold).astype(int)
+
+    X = df_deltas[feature_cols]
+    y = df_deltas[target_col]
+    
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42, stratify=y)
+    
+    model = RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced')
+    model.fit(X_train, y_train)
+    
+    # Get prediction probabilities for the positive class (high vigor)
+    y_scores = model.predict_proba(X_test)[:, 1]
+    
+    # Calculate ROC and PR curve data
+    fpr, tpr, _ = roc_curve(y_test, y_scores)
+    roc_auc = auc(fpr, tpr)
+    
+    precision, recall, _ = precision_recall_curve(y_test, y_scores)
+    pr_auc = auc(recall, precision)
+    
+    return {
+        'fpr': fpr, 'tpr': tpr, 'roc_auc': roc_auc,
+        'precision': precision, 'recall': recall, 'pr_auc': pr_auc,
+        'feature_names': feature_cols
+    }
