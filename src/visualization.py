@@ -156,3 +156,16 @@ def plot_model_performance_curves(model_results_list):
     plt.suptitle('Predicting High Vigor from Color Metrics', fontsize=20)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.show()
+
+def plot_elbow_method(k_range, inertia_values):
+    """
+    Plots the results of the Elbow Method to help find the optimal k.
+    """
+    plt.figure(figsize=(10, 6))
+    plt.plot(k_range, inertia_values, marker='o', linestyle='--')
+    plt.xlabel('Number of Clusters (k)')
+    plt.ylabel('Inertia (Within-Cluster Sum of Squares)')
+    plt.title('Elbow Method for Optimal k')
+    plt.xticks(k_range)
+    plt.grid(True)
+    plt.show()
