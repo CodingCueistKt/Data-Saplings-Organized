@@ -140,3 +140,83 @@ def calculate_deltas(df):
         df_sorted[f'delta_{col}'] = df_sorted.groupby('Plant Info')[col].diff()
         
     return df_sorted.dropna(subset=[f'delta_{col}' for col in delta_cols])
+
+def load_preprocess_and_merge_all(paths, suffixes, barcode_path, experiment_start_str='2024-05-26 00:00:00'):
+    """
+    Loads multiple feature datasets, preprocesses them, adds suffixes,
+    and merges them based on Plant Info and Date/Time.
+
+    Args:
+        paths (list): List of file paths to the feature CSV files.
+        suffixes (list): List of suffixes to add to feature columns (e.g., ['_side_old', '_side_new', '_top_new']).
+        barcode_path (str): Path to the barcode file.
+        experiment_start_str (str): Experiment start timestamp.
+
+    Returns:
+        pd.DataFrame: A single merged dataframe with aligned data from all sources.
+    """
+    if len(paths) != len(suffixes):
+        raise ValueError("Length of paths and suffixes must be the same.")
+
+    all_dfs = []
+    # Load barcode data once
+    try:
+        barcode_df = pd.read_csv(barcode_path)
+    except FileNotFoundError:
+        print(f"Error: Barcode file not found at {barcode_path}")
+        return None
+
+    # Define common key columns for merging and identifying features
+    key_cols = ['Plant Info', 'Days_Since_2024_05_26', 'Date', 'Plant.Genotype'] 
+    
+    # Process each dataset
+    for path, suffix in zip(paths, suffixes):
+        try:
+            # Load features
+            data_df, _ = load_data(path, barcode_path) 
+            if data_df is None:
+                print(f"Warning: Failed to load data from {path}. Skipping.")
+                continue
+                
+            # Preprocess (merge with barcode, calculate days)
+            # Assuming preprocess_data handles the merge correctly
+            processed_df = preprocess_data(data_df, barcode_df, experiment_start_str)
+            
+            # Select key columns and feature columns to keep
+            feature_cols_to_rename = [col for col in processed_df.columns if col not in key_cols and processed_df[col].dtype in [np.int64, np.float64]]
+            
+            # Add suffix to feature columns
+            rename_dict = {col: f"{col}{suffix}" for col in feature_cols_to_rename}
+            processed_df = processed_df[key_cols + feature_cols_to_rename].rename(columns=rename_dict)
+            
+            all_dfs.append(processed_df)
+            print(f"Processed: {path} with suffix {suffix}")
+
+        except FileNotFoundError:
+            print(f"Warning: File not found at {path}. Skipping.")
+        except Exception as e:
+            print(f"Error processing {path}: {e}")
+
+    if not all_dfs:
+        print("Error: No datasets were successfully processed.")
+        return None
+
+    # Merge all processed dataframes
+    # Start with the first dataframe
+    merged_all = all_dfs[0]
+    
+    # Iteratively merge the rest using an outer merge to keep all time points initially
+    # We merge on Plant Info and the integer Days column for alignment
+    merge_on_cols = ['Plant Info', 'Days_Since_2024_05_26'] 
+    
+    for i in range(1, len(all_dfs)):
+        # Select only the merge keys and the suffixed feature columns from the next df
+        cols_to_merge = merge_on_cols + [col for col in all_dfs[i].columns if col.endswith(suffixes[i])]
+        merged_all = pd.merge(merged_all, all_dfs[i][cols_to_merge], on=merge_on_cols, how='outer', suffixes=('', '_drop'))
+
+    print(f"\nFinal merged dataframe shape: {merged_all.shape}")
+    
+    # Sort for clarity
+    merged_all = merged_all.sort_values(by=['Plant Info', 'Days_Since_2024_05_26']).reset_index(drop=True)
+    
+    return merged_all
